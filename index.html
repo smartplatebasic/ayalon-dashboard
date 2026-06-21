@@ -180,8 +180,8 @@
           <div style="margin-bottom:10px;"><div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:3px;"><span>שכ"ד + ועד (2026 MTD)</span><span class="red">21.1%</span></div><div class="impact-bar"><div class="impact-fill" style="width:21.1%;background:#e53e3e;"></div></div></div>
           <div class="divider"></div>
           <div style="font-size:11px; color:#718096;">Prime Cost (F.C + L.C) = <span class="yellow">64.3%</span></div>
-          <div style="font-size:11px; color:#718096; margin-top:4px;">תקן תעשייתי: שכ"ד ≤ 10%</div>
-          <div style="font-size:11px; color:#718096; margin-top:4px; color:#fc8181;">כאן: 19.7% — כמעט פי 2 מהתקן!</div>
+          <div style="font-size:11px; color:#718096; margin-top:4px;">תקן תעשייתי: שכ"ד ≤ 7%</div>
+          <div style="font-size:11px; color:#718096; margin-top:4px; color:#fc8181;">כאן: 19.7% — פי 2.8 מהיעד!</div>
         </div>
       </div>
     </div>
@@ -232,7 +232,7 @@
     <div class="kpi-card"><div class="kpi-label">שכ"ד שנתי 2025</div><div class="kpi-value red">₪626,196</div><div class="kpi-sub">17.0% מהמכירות</div></div>
     <div class="kpi-card"><div class="kpi-label">שכ"ד + ועד שנתי 2025</div><div class="kpi-value red">₪727,153</div><div class="kpi-sub">19.7% מהמכירות</div></div>
     <div class="kpi-card"><div class="kpi-label">רווח שנתי בפועל</div><div class="kpi-value green">₪201,012</div><div class="kpi-sub">5.5% — אחרי שכ"ד 19.7%</div></div>
-    <div class="kpi-card"><div class="kpi-label">תקן תעשייתי שכ"ד</div><div class="kpi-value yellow">10%</div><div class="kpi-sub">אנחנו כמעט פי 2!</div></div>
+    <div class="kpi-card"><div class="kpi-label">תקן תעשייתי שכ"ד</div><div class="kpi-value yellow">7%</div><div class="kpi-sub">אנחנו פי 2.8 מהיעד!</div></div>
   </div>
 
   <div class="rent-grid">
@@ -257,7 +257,7 @@
       </table>
       <div class="divider"></div>
       <div style="font-size:11px; color:#718096; line-height:1.8;">
-        <div>🟢 רווח &gt; 8% | 🟡 4%-8% | 🔴 &lt; 4%</div>
+        <div>🟢 שכ"ד 🟢 רווח &gt; 8% | 🟡 4%-8% | 🔴 &lt; 4%lt; 7% | 🟡 7%-12% | 🔴 🟢 רווח &gt; 8% | 🟡 4%-8% | 🔴 &lt; 4%gt; 12%</div>
         <div>* מבוסס על מכירות 2025 + כל עלויות אחרות קבועות</div>
       </div>
     </div>
@@ -557,7 +557,7 @@ function updateScenario() {
   const profit=sales*(1-totalCostPct/100);
   const profitPct=(profit/sales*100).toFixed(1);
   const pc=profit>0?'#48bb78':'#fc8181';
-  const rpc=rentPct>18?'#fc8181':rentPct>13?'#f6e05e':'#48bb78';
+  const rpc=rentPct>12?'#fc8181':rentPct>7?'#f6e05e':'#48bb78';
 
   document.getElementById('sc-res-sales').textContent=fmt(sales);
   document.getElementById('sc-res-rent').textContent=fmt(rentM*12);
