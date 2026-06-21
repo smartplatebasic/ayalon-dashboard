@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>איילון — P&L דשבורד אנליטי</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #0f1117; color: #e2e8f0; direction: rtl; }
+
+  .header { background: linear-gradient(135deg, #1a1f2e, #2d3748); padding: 24px 32px; border-bottom: 1px solid #2d3748; display: flex; justify-content: space-between; align-items: center; }
+  .header h1 { font-size: 24px; font-weight: 700; color: #fff; }
+  .header h1 span { color: #667eea; }
+  .header-subtitle { font-size: 13px; color: #718096; margin-top: 4px; }
+
+  .tabs { display: flex; gap: 4px; padding: 16px 32px 0; background: #0f1117; border-bottom: 1px solid #1a1f2e; }
+  .tab { padding: 10px 20px; border-radius: 8px 8px 0 0; font-size: 14px; cursor: pointer; color: #718096; transition: all 0.2s; border: none; background: none; }
+  .tab.active { background: #1a1f2e; color: #667eea; font-weight: 600; border-bottom: 2px solid #667eea; }
+  .tab:hover:not(.active) { color: #a0aec0; background: #1a1f2e; }
+
+  .page { display: none; padding: 24px 32px; }
+  .page.active { display: block; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .kpi-card { background: #1a1f2e; border-radius: 12px; padding: 20px; border: 1px solid #2d3748; }
+  .kpi-label { font-size: 12px; color: #718096; margin-bottom: 8px; }
+  .kpi-value { font-size: 26px; font-weight: 700; }
+  .kpi-sub { font-size: 12px; color: #718096; margin-top: 4px; }
+  .green { color: #48bb78; } .red { color: #fc8181; } .yellow { color: #f6e05e; }
+  .blue { color: #63b3ed; } .purple { color: #b794f4; }
+
+  .section-card { background: #1a1f2e; border-radius: 12px; border: 1px solid #2d3748; margin-bottom: 20px; overflow: hidden; }
+  .section-header { padding: 14px 20px; background: #2d3748; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; }
+  .section-header h3 { font-size: 14px; font-weight: 600; }
+  .section-toggle { font-size: 16px; color: #667eea; }
+  .section-body.collapsed { display: none; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { background: #243044; padding: 9px 12px; text-align: right; font-size: 11px; color: #a0aec0; font-weight: 600; white-space: nowrap; }
+  td { padding: 8px 12px; border-bottom: 1px solid #1a2035; white-space: nowrap; }
+  tr:hover td { background: #1e2a3e; }
+  .total-row td { background: #2d3748; font-weight: 700; }
+  input[type="number"] { background: #0f1117; border: 1px solid #4a5568; color: #e2e8f0; border-radius: 5px; padding: 4px 7px; width: 100px; text-align: right; font-size: 12px; }
+  input[type="number"]:focus { outline: none; border-color: #667eea; }
+
+  .rent-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .analysis-card { background: #1a1f2e; border-radius: 12px; padding: 20px; border: 1px solid #2d3748; }
+  .analysis-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 16px; color: #a0aec0; }
+
+  .slider-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .slider-row label { font-size: 12px; color: #a0aec0; min-width: 150px; }
+  input[type="range"] { flex: 1; accent-color: #667eea; }
+  .slider-val { font-size: 13px; font-weight: 700; color: #667eea; min-width: 75px; }
+
+  .big-number { text-align: center; padding: 16px 8px; }
+  .big-number .num { font-size: 32px; font-weight: 800; }
+  .big-number .lbl { font-size: 11px; color: #718096; margin-top: 4px; }
+
+  .impact-bar { height: 7px; background: #243044; border-radius: 4px; overflow: hidden; margin: 5px 0; }
+  .impact-fill { height: 100%; border-radius: 4px; }
+
+  .roi-display { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 12px 0; }
+  .roi-box { background: #243044; border-radius: 10px; padding: 14px; text-align: center; }
+  .roi-box .val { font-size: 22px; font-weight: 700; }
+  .roi-box .lbl { font-size: 11px; color: #718096; margin-top: 4px; }
+
+  .bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 110px; margin-top: 10px; }
+  .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; height: 100%; justify-content: flex-end; }
+  .bar { width: 100%; border-radius: 4px 4px 0 0; min-height: 2px; }
+  .bar-label { font-size: 10px; color: #718096; }
+  .bar-val { font-size: 10px; font-weight: 600; }
+
+  .scenario-grid { display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
+  .controls-panel { background: #1a1f2e; border-radius: 12px; padding: 18px; border: 1px solid #2d3748; }
+  .controls-panel h3 { font-size: 13px; font-weight: 600; margin-bottom: 14px; color: #a0aec0; border-bottom: 1px solid #2d3748; padding-bottom: 8px; }
+  .ctrl-group { margin-bottom: 12px; }
+  .ctrl-label { font-size: 11px; color: #a0aec0; margin-bottom: 4px; display: flex; justify-content: space-between; }
+  .btn { padding: 9px 18px; border-radius: 7px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; }
+  .btn-primary { background: #667eea; color: white; width: 100%; margin-top: 6px; }
+  .btn-primary:hover { background: #5a67d8; }
+  .btn-secondary { background: #2d3748; color: #a0aec0; margin-top: 4px; }
+
+  .results-panel { background: #1a1f2e; border-radius: 12px; padding: 18px; border: 1px solid #2d3748; }
+  .results-panel h3 { font-size: 13px; font-weight: 600; margin-bottom: 14px; color: #a0aec0; border-bottom: 1px solid #2d3748; padding-bottom: 8px; }
+
+  .scenario-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+  .scenario-col { background: #243044; border-radius: 10px; padding: 14px; }
+  .scenario-col.highlight { border: 2px solid #667eea; }
+  .scenario-col h4 { font-size: 12px; color: #718096; margin-bottom: 10px; }
+  .scenario-line { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #1a2035; font-size: 12px; }
+  .scenario-line:last-child { border-bottom: none; font-weight: 700; }
+
+  .divider { height: 1px; background: #2d3748; margin: 14px 0; }
+  .note { font-size: 11px; color: #4a5568; text-align: center; padding: 6px; }
+
+  @media (max-width: 1000px) {
+    .kpi-grid { grid-template-columns: repeat(2,1fr); }
+    .rent-grid, .scenario-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>איילון — <span>P&L Dashboard</span></h1>
+    <div class="header-subtitle">דוח רווח והפסד | עריכה חיה | ניתוח שכירות | תחזית ROI</div>
+  </div>
+  <div style="font-size:12px; color:#4a5568;">מבוסס על נתוני 2025 + 2026 MTD</div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="showPage('overview',this)">📊 סקירה</button>
+  <button class="tab" onclick="showPage('pnl',this)">📋 P&L עריך</button>
+  <button class="tab" onclick="showPage('rent',this)">🏢 ניתוח שכירות</button>
+  <button class="tab" onclick="showPage('scenario',this)">🔮 תחזית ROI</button>
+</div>
+
+<!-- PAGE 1: OVERVIEW -->
+<div id="page-overview" class="page active">
+  <div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-label">מכירות שנתי 2025</div><div class="kpi-value blue">₪3,687,507</div><div class="kpi-sub">₪307K ממוצע חודשי</div></div>
+    <div class="kpi-card"><div class="kpi-label">רווח נקי 2025</div><div class="kpi-value green">₪201,012</div><div class="kpi-sub">5.5% מהמכירות</div></div>
+    <div class="kpi-card"><div class="kpi-label">מכירות 2026 MTD (5M)</div><div class="kpi-value blue">₪1,406,920</div><div class="kpi-sub">₪281K ממוצע חודשי</div></div>
+    <div class="kpi-card"><div class="kpi-label">רווח נקי 2026 MTD</div><div class="kpi-value yellow">₪42,479</div><div class="kpi-sub">3.0% — ירידה מ-5.5%</div></div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-header" onclick="toggleSection(this)"><h3>📈 מכירות ורווח חודשי — 2026</h3><span class="section-toggle">▼</span></div>
+    <div class="section-body" style="padding:20px;">
+      <div style="display:flex; gap:20px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:260px;">
+          <div style="font-size:11px; color:#718096; margin-bottom:6px;">מכירות (₪)</div>
+          <div class="bar-chart">
+            <div class="bar-wrap"><div class="bar-val blue">298K</div><div class="bar" style="background:#667eea;height:100%;"></div><div class="bar-label">ינואר</div></div>
+            <div class="bar-wrap"><div class="bar-val blue">270K</div><div class="bar" style="background:#667eea;height:91%;"></div><div class="bar-label">פבר׳</div></div>
+            <div class="bar-wrap"><div class="bar-val blue">243K</div><div class="bar" style="background:#667eea;height:81%;"></div><div class="bar-label">מרץ</div></div>
+            <div class="bar-wrap"><div class="bar-val blue">298K</div><div class="bar" style="background:#667eea;height:100%;"></div><div class="bar-label">אפריל</div></div>
+            <div class="bar-wrap"><div class="bar-val blue">297K</div><div class="bar" style="background:#667eea;height:100%;"></div><div class="bar-label">מאי</div></div>
+          </div>
+        </div>
+        <div style="flex:1; min-width:260px;">
+          <div style="font-size:11px; color:#718096; margin-bottom:6px;">רווח נקי (₪)</div>
+          <div class="bar-chart">
+            <div class="bar-wrap"><div class="bar-val green">22.5K</div><div class="bar" style="background:#48bb78;height:38%;"></div><div class="bar-label">ינואר</div></div>
+            <div class="bar-wrap"><div class="bar-val green">13.2K</div><div class="bar" style="background:#48bb78;height:22%;"></div><div class="bar-label">פבר׳</div></div>
+            <div class="bar-wrap"><div class="bar-val red">-58.8K</div><div class="bar" style="background:#fc8181;height:100%;"></div><div class="bar-label">מרץ</div></div>
+            <div class="bar-wrap"><div class="bar-val green">41.3K</div><div class="bar" style="background:#48bb78;height:70%;"></div><div class="bar-label">אפריל</div></div>
+            <div class="bar-wrap"><div class="bar-val green">24.3K</div><div class="bar" style="background:#48bb78;height:41%;"></div><div class="bar-label">מאי</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="note">* מרץ 2026 — הפסד חריג. עלות חומרים זינקה ל-58.9% מהמכירות</div>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-header" onclick="toggleSection(this)"><h3>🥧 פירוט עלויות 2025 שנתי</h3><span class="section-toggle">▼</span></div>
+    <div class="section-body" style="padding:20px;">
+      <div style="display:flex; gap:20px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:280px;">
+          <table>
+            <tr><th>סעיף</th><th>₪</th><th>%</th></tr>
+            <tr><td>עלות חומרים</td><td>1,489,405</td><td class="yellow">40.4%</td></tr>
+            <tr><td>שכר</td><td>880,623</td><td class="yellow">23.9%</td></tr>
+            <tr><td>הוצאות מכירה</td><td>846,545</td><td class="yellow">23.0%</td></tr>
+            <tr><td style="padding-right:20px; color:#fc8181;">— שכ"ד</td><td>626,196</td><td class="red">17.0%</td></tr>
+            <tr><td style="padding-right:20px; color:#fc8181;">— ועד/ניהול</td><td>100,957</td><td class="red">2.7%</td></tr>
+            <tr><td>הנהלה וכלליות</td><td>133,352</td><td class="blue">3.6%</td></tr>
+            <tr><td>חרושת + מימון</td><td>136,449</td><td class="blue">3.7%</td></tr>
+            <tr class="total-row"><td>סה"כ עלויות</td><td>3,486,495</td><td class="red">94.5%</td></tr>
+            <tr class="total-row"><td>רווח נקי</td><td>201,012</td><td class="green">5.5%</td></tr>
+          </table>
+        </div>
+        <div style="flex:1; min-width:260px;">
+          <div style="font-size:12px; color:#718096; margin-bottom:10px;">שכירות כ-% מהמכירות</div>
+          <div style="margin-bottom:10px;"><div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:3px;"><span>שכ"ד בלבד (2025)</span><span class="red">17.0%</span></div><div class="impact-bar"><div class="impact-fill" style="width:17%;background:#fc8181;"></div></div></div>
+          <div style="margin-bottom:10px;"><div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:3px;"><span>שכ"ד + ועד (2025)</span><span class="red">19.7%</span></div><div class="impact-bar"><div class="impact-fill" style="width:19.7%;background:#e53e3e;"></div></div></div>
+          <div style="margin-bottom:10px;"><div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:3px;"><span>שכ"ד בלבד (2026 MTD)</span><span class="red">18.1%</span></div><div class="impact-bar"><div class="impact-fill" style="width:18.1%;background:#fc8181;"></div></div></div>
+          <div style="margin-bottom:10px;"><div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:3px;"><span>שכ"ד + ועד (2026 MTD)</span><span class="red">21.1%</span></div><div class="impact-bar"><div class="impact-fill" style="width:21.1%;background:#e53e3e;"></div></div></div>
+          <div class="divider"></div>
+          <div style="font-size:11px; color:#718096;">Prime Cost (F.C + L.C) = <span class="yellow">64.3%</span></div>
+          <div style="font-size:11px; color:#718096; margin-top:4px;">תקן תעשייתי: שכ"ד ≤ 10%</div>
+          <div style="font-size:11px; color:#718096; margin-top:4px; color:#fc8181;">כאן: 19.7% — כמעט פי 2 מהתקן!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 2: EDITABLE P&L -->
+<div id="page-pnl" class="page">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+    <div style="font-size:13px; color:#a0aec0;">ערוך כל ערך — הסיכומים מתעדכנים אוטומטית ✏️</div>
+    <button class="btn btn-secondary" onclick="resetPnl()">🔄 איפוס לנתוני מקור</button>
+  </div>
+
+  <div class="section-card">
+    <div class="section-header" onclick="toggleSection(this)"><h3 style="color:#48bb78;">💰 הכנסות</h3><span class="section-toggle">▼</span></div>
+    <div class="section-body"><table><thead><tr><th>תאור</th><th>2025 שנתי</th><th>2026 MTD</th><th>ינואר</th><th>פברואר</th><th>מרץ</th><th>אפריל</th><th>מאי</th></tr></thead><tbody id="rev-body"></tbody><tfoot id="rev-foot"></tfoot></table></div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-header" onclick="toggleSection(this)"><h3 style="color:#f6e05e;">🍽️ עלות חומרים (F.C)</h3><span class="section-toggle">▼</span></div>
+    <div class="section-body"><table><thead><tr><th>תאור</th><th>2025 שנתי</th><th>2026 MTD</th><th>ינואר</th><th>פברואר</th><th>מרץ</th><th>אפריל</th><th>מאי</th></tr></thead><tbody id="fc-body"></tbody><tfoot id="fc-foot"></tfoot></table></div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-header" onclick="toggleSection(this)"><h3 style="color:#63b3ed;">👷 הוצאות שכר (L.C)</h3><span class="section-toggle">▼</span></div>
+    <div class="section-body"><table><thead><tr><th>תאור</th><th>2025 שנתי</th><th>2026 MTD</th><th>ינואר</th><th>פברואר</th><th>מרץ</th><th>אפריל</th><th>מאי</th></tr></thead><tbody id="lc-body"></tbody><tfoot id="lc-foot"></tfoot></table></div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-header" onclick="toggleSection(this)"><h3 style="color:#fc8181;">🏢 הוצאות מכירה (שכירות מודגש)</h3><span class="section-toggle">▼</span></div>
+    <div class="section-body"><table><thead><tr><th>תאור</th><th>2025 שנתי</th><th>2026 MTD</th><th>ינואר</th><th>פברואר</th><th>מרץ</th><th>אפריל</th><th>מאי</th></tr></thead><tbody id="sell-body"></tbody><tfoot id="sell-foot"></tfoot></table></div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-header" onclick="toggleSection(this)"><h3 style="color:#b794f4;">⚙️ הנהלה וכלליות + חרושת + מימון</h3><span class="section-toggle">▼</span></div>
+    <div class="section-body"><table><thead><tr><th>תאור</th><th>2025 שנתי</th><th>2026 MTD</th><th>ינואר</th><th>פברואר</th><th>מרץ</th><th>אפריל</th><th>מאי</th></tr></thead><tbody id="other-body"></tbody><tfoot id="other-foot"></tfoot></table></div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-header"><h3>📊 סיכום P&L</h3></div>
+    <div class="section-body"><table><thead><tr><th>שורה</th><th>2025 שנתי</th><th>2026 MTD</th><th>ינואר</th><th>פברואר</th><th>מרץ</th><th>אפריל</th><th>מאי</th></tr></thead><tbody id="summary-body"></tbody></table></div>
+  </div>
+</div>
+
+<!-- PAGE 3: RENT ANALYSIS -->
+<div id="page-rent" class="page">
+  <div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-label">שכ"ד שנתי 2025</div><div class="kpi-value red">₪626,196</div><div class="kpi-sub">17.0% מהמכירות</div></div>
+    <div class="kpi-card"><div class="kpi-label">שכ"ד + ועד שנתי 2025</div><div class="kpi-value red">₪727,153</div><div class="kpi-sub">19.7% מהמכירות</div></div>
+    <div class="kpi-card"><div class="kpi-label">רווח שנתי בפועל</div><div class="kpi-value green">₪201,012</div><div class="kpi-sub">5.5% — אחרי שכ"ד 19.7%</div></div>
+    <div class="kpi-card"><div class="kpi-label">תקן תעשייתי שכ"ד</div><div class="kpi-value yellow">10%</div><div class="kpi-sub">אנחנו כמעט פי 2!</div></div>
+  </div>
+
+  <div class="rent-grid">
+    <div class="analysis-card">
+      <h3>🎚️ סימולציית שכ"ד — השפעה על רווח שנתי</h3>
+      <div class="slider-row"><label>שכ"ד חודשי (₪)</label><input type="range" id="rent-slider" min="20000" max="80000" step="1000" value="52183" oninput="updateRentAnalysis()"><span class="slider-val" id="rent-slider-val">₪52,183</span></div>
+      <div class="slider-row"><label>ועד/ניהול חודשי (₪)</label><input type="range" id="mgmt-slider" min="0" max="20000" step="500" value="8413" oninput="updateRentAnalysis()"><span class="slider-val" id="mgmt-slider-val">₪8,413</span></div>
+      <div class="divider"></div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <div class="big-number"><div class="num red" id="new-rent-annual">₪626,196</div><div class="lbl">שכ"ד שנתי</div></div>
+        <div class="big-number"><div class="num yellow" id="rent-change-val">₪0</div><div class="lbl">הפרש שנתי</div></div>
+        <div class="big-number"><div class="num green" id="new-profit">₪201,012</div><div class="lbl">רווח שנתי</div></div>
+        <div class="big-number"><div class="num red" id="new-rent-pct">17.0%</div><div class="lbl">שכ"ד % מכירות</div></div>
+      </div>
+    </div>
+
+    <div class="analysis-card">
+      <h3>📊 טבלת תרחישי שכ"ד</h3>
+      <table>
+        <thead><tr><th>שכ"ד/חודש</th><th>שנתי</th><th>% מכירות</th><th>רווח שנתי</th><th>% רווח</th></tr></thead>
+        <tbody id="rent-scenarios-table"></tbody>
+      </table>
+      <div class="divider"></div>
+      <div style="font-size:11px; color:#718096; line-height:1.8;">
+        <div>🟢 רווח &gt; 8% | 🟡 4%-8% | 🔴 &lt; 4%</div>
+        <div>* מבוסס על מכירות 2025 + כל עלויות אחרות קבועות</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-header" onclick="toggleSection(this)"><h3>📅 שכ"ד % מכירות — חודשי 2026</h3><span class="section-toggle">▼</span></div>
+    <div class="section-body" style="padding:16px;">
+      <table>
+        <thead><tr><th>חודש</th><th>מכירות</th><th>שכ"ד</th><th>ועד/ניהול</th><th>שכ"ד+ועד</th><th>% שכ"ד</th><th>% שכ"ד+ועד</th><th>רווח</th><th>% רווח</th></tr></thead>
+        <tbody>
+          <tr><td>ינואר 26</td><td>₪298,323</td><td>₪51,561</td><td>₪7,836</td><td>₪59,397</td><td class="yellow">17.3%</td><td class="red">19.9%</td><td class="green">₪22,470</td><td class="green">7.5%</td></tr>
+          <tr><td>פברואר 26</td><td>₪270,383</td><td>₪51,061</td><td>₪7,836</td><td>₪58,897</td><td class="red">18.9%</td><td class="red">21.8%</td><td class="green">₪13,175</td><td class="yellow">4.9%</td></tr>
+          <tr><td>מרץ 26</td><td>₪242,723</td><td>₪49,061</td><td>₪10,834</td><td>₪59,895</td><td class="red">20.2%</td><td class="red">24.7%</td><td class="red">-₪58,838</td><td class="red">-24.2%</td></tr>
+          <tr><td>אפריל 26</td><td>₪298,422</td><td>₪50,561</td><td>₪7,836</td><td>₪58,397</td><td class="yellow">16.9%</td><td class="red">19.5%</td><td class="green">₪41,336</td><td class="green">13.9%</td></tr>
+          <tr><td>מאי 26</td><td>₪297,069</td><td>₪51,985</td><td>₪7,904</td><td>₪59,889</td><td class="yellow">17.5%</td><td class="red">20.2%</td><td class="green">₪24,337</td><td class="yellow">8.2%</td></tr>
+          <tr class="total-row"><td>2025 שנתי</td><td>₪3,687,507</td><td>₪626,196</td><td>₪100,957</td><td>₪727,153</td><td class="red">17.0%</td><td class="red">19.7%</td><td class="green">₪201,012</td><td class="green">5.5%</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 4: SCENARIO / ROI -->
+<div id="page-scenario" class="page">
+  <div style="font-size:12px; color:#718096; margin-bottom:16px;">הזן שכ"ד חדש + עלות בנייה — חישוב ROI ורווח עתידי בהתבסס על כל שאר העלויות</div>
+
+  <div class="scenario-grid">
+    <div>
+      <div class="controls-panel">
+        <h3>🏗️ פרמטרי תרחיש</h3>
+        <div class="ctrl-group"><div class="ctrl-label"><span>שכ"ד חודשי חדש (₪)</span><span id="lbl-rent" class="red">₪52,183</span></div><input type="range" id="sc-rent" min="15000" max="100000" step="1000" value="52183" oninput="updateScenario()" style="width:100%;accent-color:#667eea;"></div>
+        <div class="ctrl-group"><div class="ctrl-label"><span>ועד/ניהול חודשי (₪)</span><span id="lbl-mgmt" class="red">₪8,413</span></div><input type="range" id="sc-mgmt" min="0" max="20000" step="500" value="8413" oninput="updateScenario()" style="width:100%;accent-color:#667eea;"></div>
+        <div class="ctrl-group"><div class="ctrl-label"><span>עלות בנייה / השקעה (₪)</span><span id="lbl-build" class="purple">₪0</span></div><input type="range" id="sc-build" min="0" max="3000000" step="50000" value="0" oninput="updateScenario()" style="width:100%;accent-color:#b794f4;"><div style="display:flex;justify-content:space-between;font-size:10px;color:#4a5568;"><span>₪0</span><span>₪3M</span></div></div>
+        <div class="ctrl-group"><div class="ctrl-label"><span>מכירות שנתיות צפויות (₪)</span><span id="lbl-sales" class="blue">₪3,687,507</span></div><input type="range" id="sc-sales" min="2000000" max="6000000" step="50000" value="3687507" oninput="updateScenario()" style="width:100%;accent-color:#63b3ed;"><div style="display:flex;justify-content:space-between;font-size:10px;color:#4a5568;"><span>₪2M</span><span>₪6M</span></div></div>
+        <div class="divider"></div>
+        <h3>✏️ עריכת % עלויות (שנתי)</h3>
+        <div class="ctrl-group"><div class="ctrl-label"><span>% עלות חומרים F.C</span><span id="lbl-fc">40.4%</span></div><input type="range" id="sc-fc" min="25" max="65" step="0.5" value="40.4" oninput="updateScenario()" style="width:100%;accent-color:#f6e05e;"></div>
+        <div class="ctrl-group"><div class="ctrl-label"><span>% שכר L.C</span><span id="lbl-lc">23.9%</span></div><input type="range" id="sc-lc" min="15" max="45" step="0.5" value="23.9" oninput="updateScenario()" style="width:100%;accent-color:#63b3ed;"></div>
+        <div class="ctrl-group"><div class="ctrl-label"><span>% הנהלה + חרושת + מימון</span><span id="lbl-other">7.3%</span></div><input type="range" id="sc-other" min="3" max="15" step="0.1" value="7.3" oninput="updateScenario()" style="width:100%;accent-color:#b794f4;"></div>
+        <div class="ctrl-group"><div class="ctrl-label"><span>% הוצ מכירה (ללא שכ"ד)</span><span id="lbl-sell">6.0%</span></div><input type="range" id="sc-sell" min="2" max="15" step="0.1" value="6.0" oninput="updateScenario()" style="width:100%;accent-color:#f6ad55;"></div>
+        <button class="btn btn-secondary" style="width:100%; margin-top:8px;" onclick="resetScenario()">🔄 איפוס</button>
+      </div>
+    </div>
+
+    <div class="results-panel">
+      <h3>📊 תוצאות תרחיש</h3>
+
+      <div class="scenario-compare">
+        <div class="scenario-col">
+          <h4>📌 נוכחי (בסיס 2025)</h4>
+          <div class="scenario-line"><span>מכירות שנתיות</span><span class="blue">₪3,687,507</span></div>
+          <div class="scenario-line"><span>שכ"ד שנתי</span><span class="red">₪626,196</span></div>
+          <div class="scenario-line"><span>שכ"ד + ועד</span><span class="red">₪727,153</span></div>
+          <div class="scenario-line"><span>% שכ"ד ממכירות</span><span class="red">19.7%</span></div>
+          <div class="scenario-line"><span>רווח שנתי</span><span class="green">₪201,012</span></div>
+          <div class="scenario-line"><span>% רווח</span><span class="green">5.5%</span></div>
+        </div>
+        <div class="scenario-col highlight">
+          <h4>🔮 תרחיש חדש</h4>
+          <div class="scenario-line"><span>מכירות שנתיות</span><span class="blue" id="sc-res-sales">₪3,687,507</span></div>
+          <div class="scenario-line"><span>שכ"ד שנתי</span><span class="red" id="sc-res-rent">₪626,196</span></div>
+          <div class="scenario-line"><span>שכ"ד + ועד</span><span class="red" id="sc-res-rent-total">₪727,153</span></div>
+          <div class="scenario-line"><span>% שכ"ד ממכירות</span><span id="sc-res-rent-pct" class="red">19.7%</span></div>
+          <div class="scenario-line"><span>רווח שנתי</span><span id="sc-res-profit" class="green">₪201,012</span></div>
+          <div class="scenario-line"><span>% רווח</span><span id="sc-res-profit-pct" class="green">5.5%</span></div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <h3>🏗️ ROI — עלות בנייה</h3>
+      <div class="roi-display">
+        <div class="roi-box"><div class="val purple" id="roi-build">₪0</div><div class="lbl">עלות בנייה</div></div>
+        <div class="roi-box"><div class="val green" id="roi-profit">₪201,012</div><div class="lbl">רווח שנתי</div></div>
+        <div class="roi-box"><div class="val yellow" id="roi-years">—</div><div class="lbl">שנות החזר (ROI)</div></div>
+      </div>
+
+      <div class="divider"></div>
+      <h3>📅 תחזית 5 שנים מצטבר</h3>
+      <table><thead><tr><th>שנה</th><th>רווח שנתי</th><th>רווח מצטבר</th><th>השקעה שנותרת</th><th>ROI מצטבר</th></tr></thead><tbody id="projection-body"></tbody></table>
+
+      <div class="divider"></div>
+      <div style="background:#243044; border-radius:8px; padding:12px; font-size:12px;">
+        <div style="font-weight:600; margin-bottom:6px; color:#a0aec0;">📌 סיכום:</div>
+        <div id="roi-formula" style="color:#667eea; line-height:1.9;">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const BASE_DATA = {
+  revenue: { rows: [
+    {name:'הכנסות לא בקופה', vals:[131296.95,32224.34,3320.84,6252.19,3658.82,4589.59,14402.90]},
+    {name:'הכנסות לקוחות קופה', vals:[3554313.59,1373900.62,294836.78,263970.83,238929.13,293662.39,282501.49]},
+    {name:'הכנסות שווי ארוחות', vals:[1896.94,794.88,164.91,160.04,135.41,169.60,164.93]},
+  ], totals:[3687507.48,1406919.84,298322.53,270383.06,242723.36,298421.58,297069.32]},
+  fc: { rows: [
+    {name:'דברי מאפה', vals:[102212.65,45598.61,12025.42,8016.96,8894.46,9363.47,7298.30]},
+    {name:'קניות חומרים', vals:[79271.27,46902.31,7597.19,8211.94,17005.78,2765.43,11321.97]},
+    {name:'לחמים', vals:[81216.95,27772.88,6639.83,6010.17,4340.68,4432.20,6350.00]},
+    {name:'משקאות / שתיה', vals:[120671.69,45870.59,9189.17,9538.34,10078.75,7687.27,9377.06]},
+    {name:'מוצרי קפה', vals:[61670.24,24233.92,5814.18,4553.52,2161.38,7021.90,4682.94]},
+    {name:'פירות וירקות', vals:[40912.62,16624.56,3806.00,2921.86,3126.00,3059.70,3711.00]},
+    {name:'מוצרי חלב וגבינות', vals:[95369.78,38653.13,9396.95,7955.92,6460.05,7499.07,7341.14]},
+    {name:'הוצ שווי ארוחות', vals:[2238.38,937.97,194.60,188.85,159.78,200.12,194.62]},
+    {name:'מכירות פנימי לסניפים', vals:[905841.00,333313.00,60993.00,63498.00,90768.00,57770.00,60284.00]},
+  ], totals:[1489404.58,579906.97,115656.34,110895.56,142994.88,99799.16,110561.03]},
+  lc: { rows: [
+    {name:'משכורת', vals:[839482.00,329374.00,66339.00,60398.00,64125.00,70429.00,68083.00]},
+    {name:'סוציאלי', vals:[14229.00,6710.00,880.00,822.00,1315.00,1883.00,1810.00]},
+    {name:'ביטוח לאומי', vals:[29983.00,11285.00,2384.00,2123.00,2182.00,2224.00,2372.00]},
+    {name:'הכנסות זקופות', vals:[-18520.00,-2700.00,0,0,-2700.00,0,0]},
+    {name:'פיצויים', vals:[15449.00,7150.00,1003.00,950.00,1405.00,1930.00,1862.00]},
+  ], totals:[880623.00,351819.00,70606.00,64293.00,66327.00,76466.00,74127.00]},
+  sell: { rows: [
+    {name:'אריזה', vals:[55979.88,17872.68,2427.70,3808.54,3908.86,4047.32,3680.26]},
+    {name:'שיווק / פרסום', vals:[11347.42,186.44,0,186.44,0,0,0]},
+    {name:'השכרת רכב', vals:[18286.70,0,0,0,0,0,0]},
+    {name:'🏢 שכירות — שכ"ד', vals:[626195.82,254228.82,51561.02,51061.02,49061.02,50561.01,51984.75], hi:true},
+    {name:'🏢 ועד בית / ניהול', vals:[100956.70,42247.46,7836.44,7836.44,10833.90,7836.44,7904.24], hi:true},
+    {name:'עמלות אשראי', vals:[30310.13,11977.62,2969.10,2333.88,1795.05,2559.44,2320.15]},
+    {name:'עמלת סליקה ארוחה', vals:[3467.89,840.67,0,602.54,0,238.13,0]},
+  ], totals:[846544.54,327459.86,64794.26,65912.08,65621.78,65242.34,65889.40]},
+  other: { rows: [
+    {name:'כשרות', vals:[1609.00,1901.00,624.00,1687.04,1000.00,277.00,0]},
+    {name:'אחזקה', vals:[23323.72,13209.31,2023.59,176.40,3194.67,3163.42,3140.59]},
+    {name:'ארנונה', vals:[33808.35,20232.21,6618.27,0,6809.67,0,6804.27]},
+    {name:'מיחשוב', vals:[16751.72,7030.85,652.42,1549.39,1542.94,1641.46,1644.64]},
+    {name:'טלפון', vals:[3906.90,1057.83,310.21,224.55,198.59,162.31,162.17]},
+    {name:'שכר טרחה', vals:[17073.60,4647.95,1621.65,1573.76,1452.55,0,0]},
+    {name:'ביטוח', vals:[14562.32,0,0,0,0,0,0]},
+    {name:'חשמל', vals:[64829.66,26761.02,6320.34,6106.78,5483.05,4341.52,4509.33]},
+    {name:'מים', vals:[4367.44,2210.68,879.38,0,797.73,0,533.57]},
+    {name:'ריבית הלואות', vals:[52603.90,16215.29,3939.71,3712.27,3395.04,3764.08,1404.19]},
+    {name:'עמלות בנקים', vals:[12641.30,4998.41,627.48,242.34,527.13,2171.10,1430.35]},
+    {name:'משאבי אנוש', vals:[11663.15,4173.30,902.61,786.88,0,0,2483.81]},
+  ], totals:[269578.16,102437.85,24519.66,16059.41,24001.37,15520.89,22113.32]}
+};
+
+let D = JSON.parse(JSON.stringify(BASE_DATA));
+
+function fmt(n) {
+  if (n===null||n===undefined) return '—';
+  const s = Math.abs(n).toLocaleString('he-IL',{maximumFractionDigits:0});
+  return (n<0?'-':'')+'₪'+s;
+}
+
+function makeInput(v, sec, ri, ci) {
+  return `<input type="number" value="${Math.round(v)}" onchange="D['${sec}'].rows[${ri}].vals[${ci}]=parseFloat(this.value)||0;recalcAll()">`;
+}
+
+function recalcAll() {
+  ['revenue','fc','lc','sell','other'].forEach(sec => {
+    D[sec].totals = D[sec].rows[0].vals.map((_,ci)=>D[sec].rows.reduce((s,r)=>s+(r.vals[ci]||0),0));
+  });
+  renderFooters();
+  renderSummary();
+}
+
+function renderSection(sec, tbodyId, tfootId) {
+  const rev = D.revenue.totals;
+  let html='';
+  D[sec].rows.forEach((row,ri)=>{
+    const style = row.hi ? 'style="background:#2d1818;"' : '';
+    html+=`<tr ${style}><td>${row.name}</td>`;
+    row.vals.forEach((v,ci)=>{ html+=`<td>${makeInput(v,sec,ri,ci)}</td>`; });
+    html+='</tr>';
+  });
+  document.getElementById(tbodyId).innerHTML=html;
+  renderFoot(sec, tfootId);
+}
+
+function renderFoot(sec, tfootId) {
+  const rev=D.revenue.totals;
+  let id=tfootId||(sec+'-foot');
+  let el=document.getElementById(id); if(!el)return;
+  let h=`<tr class="total-row"><td>סה"כ</td>`;
+  D[sec].totals.forEach((t,i)=>{
+    const p=rev[i]?(t/rev[i]*100).toFixed(1)+'%':'';
+    h+=`<td>${fmt(t)}<br><span style="font-size:10px;color:#718096;">${p}</span></td>`;
+  });
+  h+='</tr>'; el.innerHTML=h;
+}
+
+function renderFooters() {
+  ['fc','lc','sell','other'].forEach(s=>renderFoot(s));
+  // revenue footer
+  let el=document.getElementById('rev-foot'); if(!el)return;
+  let h=`<tr class="total-row"><td>סה"כ הכנסות</td>`;
+  D.revenue.totals.forEach(t=>h+=`<td>${fmt(t)}</td>`);
+  h+='</tr>'; el.innerHTML=h;
+}
+
+function renderSummary() {
+  const rev=D.revenue.totals, fc=D.fc.totals, lc=D.lc.totals, sell=D.sell.totals, other=D.other.totals;
+  const totalC=rev.map((_,i)=>fc[i]+lc[i]+sell[i]+other[i]);
+  const profit=rev.map((r,i)=>r-totalC[i]);
+  const rows=[
+    {n:'💰 הכנסות',v:rev,c:'#48bb78'},
+    {n:'🍽️ עלות חומרים',v:fc,c:'#f6e05e'},
+    {n:'👷 שכר',v:lc,c:'#63b3ed'},
+    {n:'🏢 הוצ מכירה',v:sell,c:'#fc8181'},
+    {n:'⚙️ הנהלה+חרושת+מימון',v:other,c:'#b794f4'},
+    {n:'סה"כ עלויות',v:totalC,c:'#e53e3e',bold:true},
+    {n:'✨ רווח נקי',v:profit,profit:true,bold:true},
+  ];
+  let html='';
+  rows.forEach(row=>{
+    html+=`<tr ${row.bold?'class="total-row"':''}>`;
+    html+=`<td style="color:${row.c||'#fff'}">${row.n}</td>`;
+    row.v.forEach((v,i)=>{
+      const c=row.profit?(v>=0?'#48bb78':'#fc8181'):(row.c||'#e2e8f0');
+      const p=rev[i]?(v/rev[i]*100).toFixed(1):'0';
+      html+=`<td style="color:${c}">${fmt(v)}<br><span style="font-size:10px;color:#718096;">${p}%</span></td>`;
+    });
+    html+='</tr>';
+  });
+  document.getElementById('summary-body').innerHTML=html;
+}
+
+function initPnl() {
+  renderSection('revenue','rev-body','rev-foot');
+  renderSection('fc','fc-body','fc-foot');
+  renderSection('lc','lc-body','lc-foot');
+  renderSection('sell','sell-body','sell-foot');
+  renderSection('other','other-body','other-foot');
+  renderSummary();
+}
+
+function resetPnl() { D=JSON.parse(JSON.stringify(BASE_DATA)); initPnl(); }
+
+// RENT
+function buildRentTable() {
+  const baseRev=3687507, baseOther=3486495-626196-100957;
+  const scenarios=[25000,35000,45000,52183,60000,70000,80000];
+  let html='';
+  scenarios.forEach(m=>{
+    const ann=m*12, mgmt=8413*12, tot=ann+mgmt, costs=baseOther+tot;
+    const profit=baseRev-costs;
+    const pp=(profit/baseRev*100).toFixed(1);
+    const rp=(ann/baseRev*100).toFixed(1);
+    const isBase=m===52183;
+    const pc=parseFloat(pp)>8?'#48bb78':parseFloat(pp)>4?'#f6e05e':'#fc8181';
+    html+=`<tr ${isBase?'style="background:#2d3748;"':''}>
+      <td>${isBase?'📌 ':''}${fmt(m)}/חודש</td>
+      <td>${fmt(ann)}</td><td>${rp}%</td>
+      <td style="color:${pc}">${fmt(profit)}</td>
+      <td style="color:${pc}">${pp}%</td>
+    </tr>`;
+  });
+  document.getElementById('rent-scenarios-table').innerHTML=html;
+}
+
+function updateRentAnalysis() {
+  const rm=parseInt(document.getElementById('rent-slider').value);
+  const mm=parseInt(document.getElementById('mgmt-slider').value);
+  document.getElementById('rent-slider-val').textContent=fmt(rm);
+  document.getElementById('mgmt-slider-val').textContent=fmt(mm);
+  const baseRev=3687507, baseOther=3486495-626196-100957;
+  const rAnn=rm*12, mAnn=mm*12, tot=rAnn+mAnn;
+  const profit=baseRev-(baseOther+tot);
+  const profC=profit>0?'#48bb78':'#fc8181';
+  const rPct=(rAnn/baseRev*100).toFixed(1);
+  const diff=tot-(626196+100957);
+  document.getElementById('new-rent-annual').textContent=fmt(rAnn);
+  document.getElementById('rent-change-val').textContent=(diff>=0?'+':'')+fmt(diff);
+  document.getElementById('rent-change-val').style.color=diff<=0?'#48bb78':'#fc8181';
+  document.getElementById('new-profit').textContent=fmt(profit);
+  document.getElementById('new-profit').style.color=profC;
+  document.getElementById('new-rent-pct').textContent=rPct+'%';
+}
+
+// SCENARIO
+function updateScenario() {
+  const rentM=parseInt(document.getElementById('sc-rent').value);
+  const mgmtM=parseInt(document.getElementById('sc-mgmt').value);
+  const build=parseInt(document.getElementById('sc-build').value);
+  const sales=parseInt(document.getElementById('sc-sales').value);
+  const fcP=parseFloat(document.getElementById('sc-fc').value);
+  const lcP=parseFloat(document.getElementById('sc-lc').value);
+  const otherP=parseFloat(document.getElementById('sc-other').value);
+  const sellP=parseFloat(document.getElementById('sc-sell').value);
+
+  document.getElementById('lbl-rent').textContent=fmt(rentM);
+  document.getElementById('lbl-mgmt').textContent=fmt(mgmtM);
+  document.getElementById('lbl-build').textContent=fmt(build);
+  document.getElementById('lbl-sales').textContent=fmt(sales);
+  document.getElementById('lbl-fc').textContent=fcP.toFixed(1)+'%';
+  document.getElementById('lbl-lc').textContent=lcP.toFixed(1)+'%';
+  document.getElementById('lbl-other').textContent=otherP.toFixed(1)+'%';
+  document.getElementById('lbl-sell').textContent=sellP.toFixed(1)+'%';
+
+  const rentAnn=(rentM+mgmtM)*12;
+  const rentPct=(rentAnn/sales*100);
+  const totalCostPct=fcP+lcP+otherP+sellP+rentPct;
+  const profit=sales*(1-totalCostPct/100);
+  const profitPct=(profit/sales*100).toFixed(1);
+  const pc=profit>0?'#48bb78':'#fc8181';
+  const rpc=rentPct>18?'#fc8181':rentPct>13?'#f6e05e':'#48bb78';
+
+  document.getElementById('sc-res-sales').textContent=fmt(sales);
+  document.getElementById('sc-res-rent').textContent=fmt(rentM*12);
+  document.getElementById('sc-res-rent-total').textContent=fmt(rentAnn);
+  document.getElementById('sc-res-rent-pct').textContent=rentPct.toFixed(1)+'%';
+  document.getElementById('sc-res-rent-pct').style.color=rpc;
+  document.getElementById('sc-res-profit').textContent=fmt(profit);
+  document.getElementById('sc-res-profit').style.color=pc;
+  document.getElementById('sc-res-profit-pct').textContent=profitPct+'%';
+  document.getElementById('sc-res-profit-pct').style.color=pc;
+
+  document.getElementById('roi-build').textContent=fmt(build);
+  document.getElementById('roi-profit').textContent=fmt(profit);
+
+  let roiYears='—';
+  if(build>0&&profit>0) roiYears=(build/profit).toFixed(1)+' שנים';
+  else if(build===0) roiYears='ללא השקעה';
+  else if(profit<=0) roiYears='∞ (הפסד)';
+  document.getElementById('roi-years').textContent=roiYears;
+  document.getElementById('roi-years').style.color=profit<=0?'#fc8181':'#f6e05e';
+
+  document.getElementById('roi-formula').innerHTML=
+    `שכ"ד שנתי: ${fmt(rentAnn)} = ${rentPct.toFixed(1)}% ממכירות<br>`+
+    `סה"כ עלויות: ${totalCostPct.toFixed(1)}% | מכירות: ${fmt(sales)}<br>`+
+    `רווח שנתי: ${fmt(profit)} (${profitPct}%)<br>`+
+    (build>0?`ROI: ${fmt(build)} ÷ ${fmt(profit)} = ${roiYears}`:'לא הוזנה עלות בנייה');
+
+  let html='', cumP=0;
+  for(let y=1;y<=5;y++){
+    const rem=Math.max(0,build-profit*y);
+    cumP+=profit;
+    const roi=build>0?((cumP/build)*100).toFixed(0)+'%':'—';
+    html+=`<tr>
+      <td>שנה ${y}</td>
+      <td style="color:${pc}">${fmt(profit)}</td>
+      <td style="color:${pc}">${fmt(cumP)}</td>
+      <td style="color:${rem===0?'#48bb78':'#fc8181'}">${fmt(rem)}</td>
+      <td>${roi}</td>
+    </tr>`;
+  }
+  document.getElementById('projection-body').innerHTML=html;
+}
+
+function resetScenario() {
+  document.getElementById('sc-rent').value=52183;
+  document.getElementById('sc-mgmt').value=8413;
+  document.getElementById('sc-build').value=0;
+  document.getElementById('sc-sales').value=3687507;
+  document.getElementById('sc-fc').value=40.4;
+  document.getElementById('sc-lc').value=23.9;
+  document.getElementById('sc-other').value=7.3;
+  document.getElementById('sc-sell').value=6.0;
+  updateScenario();
+}
+
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='pnl') initPnl();
+  if(name==='rent') buildRentTable();
+  if(name==='scenario') updateScenario();
+}
+
+function toggleSection(h) {
+  const b=h.nextElementSibling, t=h.querySelector('.section-toggle');
+  b.classList.toggle('collapsed');
+  t.textContent=b.classList.contains('collapsed')?'▶':'▼';
+}
+
+// Init
+updateRentAnalysis();
+buildRentTable();
+updateScenario();
+</script>
+</body>
+</html>
